@@ -8,7 +8,7 @@
 #include "rsa_yg.h"
   
 
-#define BASE 62    //输入输出的数字进制,62=sum(0-9,A-Z,a-z)，但未包含符号
+#define BASE 16    //输入输出的数字进制,62=sum(0-9,A-Z,a-z)，但未包含符号
 
 /*  
     note:apt-get install libgmp-dev (直接安装，或参照如下源码编译)
@@ -130,7 +130,9 @@ int generate_key(int nbits, char *n, char *e, char *d)
 }
 
 
-//加密函数  
+//加密函数
+// case nbits=1024 then cihper length=256
+// case nbits=2048 then cihper length=512
 int encrypt(const char * plain_text, const int p_len, const char * key_n, const char *key_e, char *cipher)
 {
     int i,j = 0;
@@ -163,21 +165,29 @@ int encrypt(const char * plain_text, const int p_len, const char * key_n, const 
   
 //解密函数  
 int decrypt(const char * cipher_text, const int c_len, const char * key_n, const char * key_d, char *plain)
-{  
+{
+    int ret;
     int i,j = 0;
     mpz_t M, C, n, d; 
     char swap[3] = {0};
     int p_len;
     char *pseudo = NULL;
     
-    mpz_init_set_str(C, cipher_text, BASE);   
-    mpz_init_set_str(n, key_n, BASE);  
-    mpz_init_set_str(d, key_d, BASE);  
+    ret = mpz_init_set_str(C, cipher_text, BASE);   
+    ret += mpz_init_set_str(n, key_n, BASE);  
+    ret += mpz_init_set_str(d, key_d, BASE);
+    if (ret)
+    {
+        printf("mpz_init_set_str error.\n");
+        return -1;
+    }
+    
     mpz_init(M);  
   
-    mpz_powm(M, C, d, n);   //使用GMP中的模幂计算函数  
-
-    pseudo = calloc(1, c_len);
+    mpz_powm(M, C, d, n);   //使用GMP中的模幂计算函数
+    
+    //pseudo = calloc(1, 2048);
+    pseudo = calloc(1, mpz_sizeinbase(M, BASE) + 2);
     mpz_get_str(pseudo, BASE, M); 
 
     p_len = (strlen(pseudo)+1)/2;
@@ -195,93 +205,42 @@ int decrypt(const char * cipher_text, const int c_len, const char * key_n, const
 }  
  
 
-#if 0
-// gcc -g -O2 -o demo rsa_test.c -lgmp 
+#if DEBUG
+// gcc -g -O2 -o demo rsa_test.c rsa_yg.c -lgmp
+//or
+//gcc -c rsa_yg.c -o rsa_yg.o;cp libgmp.a librsa.a;gcc -g -O2 -o demo rsa_test.c -L. -lrsa 
 int test_rsa()  
 { 
     int i,j = 0, len;
-    key_pair * p = gen_key_pair();
+    char key_n[2048 + 10] = {0};
+    char key_e[2048 + 10] = {0};
+    char key_d[2048 + 10] = {0};
+    char buf[2048 + 10] = {0};
+    char cipher[2048 + 10] = {0};
+    char plain[2048 + 10] = {0};
 
-    //setKey(1024, 17);
-    //printf("------------------over----------------\n");
-
-    
+    generate_key(2048, key_n, key_e, key_d);
+    printf("n = %s\n", key_n); 
+    printf("e = %s\n", key_e);
+    printf("d = %s\n", key_d);
   
-    printf("n = %s\n", p->n); 
-    printf("d = %s\n", p->d);
-    printf("e = %s\n", p->e);
-
-    printf("\n----------------------------------->\n");
-    printf("public key(n,e):%s,%s\n", p->n, p->e);
-    printf("private key(n,d):%s,%s\n", p->n, p->d);
-    printf("<-----------------------------------\n\n");
-  
-    char buf[KEY_LENGTH + 10];  
-    char data[KEY_LENGTH + 10];  
-    char tmp[KEY_LENGTH + 10];  
-    char swap[3] = {0};
-    printf("请输入要加密的数字，二进制长度不超过%d\n",KEY_LENGTH); 
+    printf("请输入要加密的数字，二进制长度不超过%d\n",2048); 
     //scanf("%s", buf);
-    strcpy(buf, "./lk0cU-9C083GBFJB/KN V 8989WOH2KLN2W   P ");
+    //strcpy(buf, "0\\0./lk0cU-9C083GBFJB/KN V 8989WOH2KLN2W   P ");
+    strcpy(buf, "0\\0./lk0cU-9C083GBFJB/KN V 8989WOH2KLN2W   P 0\\0./lN V 8989WOH2KLNN V 8989WOH2KLNN V 8989WOH2KLNk0cU-9C083GBFJB/KN V 8989WOH2KLN2W   P 0\\0./lk0cU89WOH2KLN2W   P 0\\0./lk0cU89WOH2KLN2W   P 0\\0./lk0cU89WOH2KLN2W   P 0\\0./lk0cU89WOH2KLN2W   P 0\\0./lk0cU");
 
     len = strlen(buf);
-    printf("input msg len:%d\n",len); 
 
+    printf("len:%d, 原文为：%s\n",len,buf);
 
-    // asc值转字符串，长度放大一倍
-    for (i = 0; i < len; i++)
-    {
-        j += sprintf(data+j, "%02X", buf[i]);
-    }
-    printf("len:%zd data:%s\n",strlen(data), data); 
-    //end asc值转字符串
+    encrypt(buf, len, key_n, key_e, cipher);
+    printf("len:%zd, 密文为：%s\n",strlen(cipher),cipher);
 
-
-    // 字符串转回asc值
-    j = 0;
-    for (i = 0; i < len; i++)
-    {
-        memcpy(swap, &data[i*2], 2);
-
-        //printf("swap[%d] %s:\n", i*2, swap); 
-    
-        tmp[j] = strtol(swap, 0, 16);
-        //printf("tmp[%d] %d:\n", j, tmp[j]); 
-        j++;
-    }
-    printf("true data as follow:\n"); 
-    PRINT_HEX(tmp, len);
-    //end 字符串转回asc值
-
-
-    
-    char *cipher_text;
-    cipher_text = encrypt(data, p->n, p->e);  
-    printf("密文为：%s\n",cipher_text);  
-    
-    char *plain_text;
-    int p_len;
-    char true_data[1024] = {0};
-    plain_text = decrypt(cipher_text, p->n, p->d);  
-    //printf("明文为：%s\n",plain_text);
-
-
-    p_len = strlen(plain_text);
-    j = 0;
-    for (i = 0; i < p_len/2; i++)
-    {
-        memcpy(swap, &plain_text[i*2], 2);
-
-        //printf("swap[%d] %s:\n", i*2, swap); 
-    
-        true_data[j] = strtol(swap, 0, 16);
-        //printf("tmp[%d] %d:\n", j, true_data[j]); 
-        j++;
-    }
-    printf("明文为：%s\n",true_data);
-    
+    len = strlen(cipher);
+    decrypt(cipher, len, key_n, key_d, plain);
+    printf("len:%zd, 明文为：%s\n",strlen(plain),plain);    
       
-    if(strcmp(buf, true_data) != 0)  
+    if(strcmp(buf, plain) != 0)  
         printf("无法解密\n");  
     else  
         printf("解密成功\n");  

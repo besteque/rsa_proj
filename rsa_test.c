@@ -42,7 +42,9 @@
 
  
 
-// gcc -g -O2 -o demo rsa_test.c rsa_yg.c -lgmp 
+// gcc -g -O2 -o demo rsa_test.c rsa_yg.c -lgmp
+//or
+//gcc -c rsa_yg.c -o rsa_yg.o;cp libgmp.a librsa.a;gcc -g -O2 -o demo rsa_test.c -L. -lrsa 
 int main()  
 { 
     int i,j = 0, len;
@@ -60,7 +62,8 @@ int main()
   
     printf("请输入要加密的数字，二进制长度不超过%d\n",KEY_LENGTH); 
     //scanf("%s", buf);
-    strcpy(buf, "./lk0cU-9C083GBFJB/KN V 8989WOH2KLN2W   P ");
+    //strcpy(buf, "0\\0./lk0cU-9C083GBFJB/KN V 8989WOH2KLN2W   P ");
+    strcpy(buf, "0\\0./lk0cU-9C083GBFJB/KN V 8989WOH2KLN2W   P 0\\0./lN V 8989WOH2KLNN V 8989WOH2KLNN V 8989WOH2KLNk0cU-9C083GBFJB/KN V 8989WOH2KLN2W   P 0\\0./lk0cU89WOH2KLN2W   P 0\\0./lk0cU89WOH2KLN2W   P 0\\0./lk0cU89WOH2KLN2W   P 0\\0./lk0cU89WOH2KLN2W   P 0\\0./lk0cU");
 
     len = strlen(buf);
 
