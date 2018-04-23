@@ -43,11 +43,15 @@
  
 
 // gcc -g -O2 -o demo rsa_test.c rsa_yg.c -lgmp
-//or
-//gcc -c rsa_yg.c -o rsa_yg.o;cp libgmp.a librsa.a;gcc -g -O2 -o demo rsa_test.c -L. -lrsa 
+// or
+// gcc -c rsa_yg.c -o rsa_yg.o;cp libgmp.a librsa.a;gcc -g -O2 -o demo rsa_test.c -L. -lrsa 
 int main()  
-{ 
-    int i,j = 0, len;
+{
+    double          tt;
+    int             loop = 200;
+    clock_t         start, end;
+
+    int i,j = 0, len, n_len, d_len, e_len;
     char key_n[KEY_LENGTH + 10] = {0};
     char key_e[KEY_LENGTH + 10] = {0};
     char key_d[KEY_LENGTH + 10] = {0};
@@ -55,31 +59,57 @@ int main()
     char cipher[KEY_LENGTH + 10] = {0};
     char plain[KEY_LENGTH + 10] = {0};
 
-    generate_key(2048, key_n, key_e, key_d);
-    printf("n = %s\n", key_n); 
-    printf("e = %s\n", key_e);
-    printf("d = %s\n", key_d);
+    start   = clock();
+    generate_key(KEY_LENGTH, key_n, &n_len, key_e, &e_len, key_d, &d_len);
+    end = clock();
+    tt = (double) (end - start) / CLOCKS_PER_SEC;
+    printf("generate_key speed:%lf ms\n", tt*1000);
+    
+    //printf("n = %s\n", key_n); 
+    //printf("e = %s\n", key_e);
+    //printf("d = %s\n", key_d);
   
-    printf("请输入要加密的数字，二进制长度不超过%d\n",KEY_LENGTH); 
+    printf("pls input data, length must less than:%d\n",KEY_LENGTH/8); 
     //scanf("%s", buf);
     //strcpy(buf, "0\\0./lk0cU-9C083GBFJB/KN V 8989WOH2KLN2W   P ");
-    strcpy(buf, "0\\0./lk0cU-9C083GBFJB/KN V 8989WOH2KLN2W   P 0\\0./lN V 8989WOH2KLNN V 8989WOH2KLNN V 8989WOH2KLNk0cU-9C083GBFJB/KN V 8989WOH2KLN2W   P 0\\0./lk0cU89WOH2KLN2W   P 0\\0./lk0cU89WOH2KLN2W   P 0\\0./lk0cU89WOH2KLN2W   P 0\\0./lk0cU89WOH2KLN2W   P 0\\0./lk0cU");
+    strcpy(buf, "0\\0./lk0cU-9C083GFJB/KN V 8989Wd2fOH2KLN2W   P 0\\0./lN V 8989WOH2KLNN V 8989WOH2KLNN V 8989WOH2KLNk0cU-9C083GBFJB/KN V 8989WOH2");
 
     len = strlen(buf);
 
-    printf("len:%d, 原文为：%s\n",len,buf);
 
-    encrypt(buf, len, key_n, key_e, cipher);
-    printf("len:%zd, 密文为：%s\n",strlen(cipher),cipher);
+    if (len >= KEY_LENGTH/8)
+    {
+        printf("len:%d too long,must less than KEY_LENGTH/8=(%d)\n",len,KEY_LENGTH/8);
+        return -1;
+    }
 
-    len = strlen(cipher);
-    decrypt(cipher, len, key_n, key_d, plain);
-    printf("len:%zd, 明文为：%s\n",strlen(plain),plain);    
+    printf("len:%d, data:%s\n",len,buf);
+    //PRINT_HEX(buf, len);
+
+    int c_len;
+    start   = clock();
+    for (j = 0; j < loop; j++)
+        encrypt(buf, len, key_n, n_len, key_e, e_len, cipher, &c_len);
+    end = clock();
+    tt = (double) (end - start) / CLOCKS_PER_SEC;
+    printf("encrypt speed:%lf ms\n", (double) 1000 * tt/j);
+    
+    printf("len:%d, cipher data:\n", c_len);
+    //PRINT_HEX(cipher, c_len);
+
+    start   = clock();
+    for (j = 0; j < loop; j++)
+        decrypt(cipher, c_len, key_n, n_len, key_d, d_len, plain);
+    end = clock();
+    tt = (double) (end - start) / CLOCKS_PER_SEC;
+    printf("decrypt speed:%lf ms\n", (double) 1000 * tt/j);
+    printf("len:%zd, plain data:%s\n",strlen(plain),plain);
+    //PRINT_HEX(plain, strlen(plain));
       
     if(strcmp(buf, plain) != 0)  
-        printf("无法解密\n");  
+        printf("\n----------------\noops! decrypt failed!!!!!!\n----------------\n\n");  
     else  
-        printf("解密成功\n");  
+        printf("\n----------------\ncongratulations! decrypt OK.\n----------------\n\n");  
   
     return 0;  
 }  
